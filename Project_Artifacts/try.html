@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SANGAM - Hybrid AI-NWP Synoptic Blending System</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface-tint": "#0284c7",
+            "surface": "#ffffff",
+            "background": "#f8fafc",
+            "surface-subtle": "#f1f5f9",
+            "surface-card": "#ffffff",
+            "border-subtle": "#e2e8f0",
+            "border-medium": "#cbd5e1",
+            "primary": "#0284c7",
+            "primary-hover": "#0369a1",
+            "primary-light": "#e0f2fe",
+            "secondary": "#0d9488",
+            "secondary-light": "#ccfbf1",
+            "tertiary": "#ea580c",
+            "tertiary-light": "#ffedd5",
+            "warning": "#f59e0b",
+            "warning-light": "#fef3c7",
+            "danger": "#ef4444",
+            "danger-light": "#fee2e2",
+            "text-main": "#0f172a",
+            "text-muted": "#64748b",
+            "text-light": "#94a3b8"
+          },
+          fontFamily: {
+            sans: ["Inter", "sans-serif"],
+            display: ["Space Grotesk", "sans-serif"],
+            mono: ["JetBrains Mono", "monospace"]
+          }
+        }
+      }
+    };
+  </script>
+<style>
+    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+    .font-display { font-family: 'Space Grotesk', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    
+    /* Smooth transitions */
+    .btn-transition { transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1); }
+    .card-transition { transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+
+    /* Hide scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+    /* Keyframes for Atmospheric Animations */
+    @keyframes radarSweep {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .radar-sweep-spin {
+      transform-origin: center center;
+      animation: radarSweep 3.6s linear infinite;
+    }
+
+    @keyframes squallGlow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.3), inset 0 0 0 1px rgba(245, 158, 11, 0.3); }
+      50% { box-shadow: 0 0 12px 3px rgba(245, 158, 11, 0.22), inset 0 0 0 1px rgba(245, 158, 11, 0.6); }
+    }
+    .shimmer-badge-warning {
+      animation: squallGlow 2.4s ease-in-out infinite;
+    }
+
+    @keyframes rainAdvection {
+      0% { background-position: 0px 0px, 0px 0px; }
+      100% { background-position: 120px 240px, -80px 180px; }
+    }
+    .advection-bg {
+      background-image: 
+        radial-gradient(circle, rgba(2, 132, 199, 0.08) 1.5px, transparent 1.5px),
+        radial-gradient(circle, rgba(13, 148, 136, 0.06) 1.2px, transparent 1.2px);
+      background-size: 32px 32px, 48px 48px;
+      animation: rainAdvection 14s linear infinite;
+    }
+
+    @keyframes curveGlowPulse {
+      0%, 100% { filter: drop-shadow(0 0 2px rgba(2, 132, 199, 0.3)); }
+      50% { filter: drop-shadow(0 0 7px rgba(2, 132, 199, 0.65)); }
+    }
+    .curve-glow {
+      animation: curveGlowPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes curveBreathe {
+      0%, 100% { transform: scaleY(1); }
+      50% { transform: scaleY(1.04) translateY(-1px); }
+    }
+    .gaussian-breathe {
+      transform-origin: 150px 60px;
+      animation: curveBreathe 4s ease-in-out infinite;
+    }
+
+    @keyframes rippleEffect {
+      0% { transform: scale(0.8); opacity: 0.8; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+    .btn-ripple::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: rgba(255,255,255,0.4);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .btn-ripple:active::after {
+      animation: rippleEffect 0.5s ease-out;
+    }
+
+    /* Interactive Metric Tile Hover */
+    .metric-tilt {
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+    .metric-tilt:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px -2px rgba(2, 132, 199, 0.12);
+      border-color: #93c5fd;
+    }
+
+    /* Model row interactive transition */
+    .model-interactive {
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .model-interactive:hover {
+      transform: translateX(4px);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body class="text-text-main min-h-screen flex flex-col antialiased selection:bg-primary/20 selection:text-primary">
+<!-- Interactive Toast Notification System -->
+<div class="fixed top-6 right-6 z-50 flex flex-col gap-2 pointer-events-none" id="toast-container"></div>
+<!-- Sparkline Drilldown Modal Popover for Metric Tiles -->
+<div class="fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-sm hidden items-center justify-center p-4 transition-opacity duration-200" id="tile-drilldown-modal">
+<div class="bg-white rounded-2xl border border-border-subtle shadow-2xl max-w-md w-full p-5 relative transform transition-all duration-300 scale-95" id="drilldown-modal-box">
+<div class="flex items-center justify-between pb-3 border-b border-border-subtle">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center" id="drilldown-icon">
+<span class="material-symbols-outlined text-[19px]">water</span>
+</div>
+<div>
+<h4 class="font-display font-bold text-sm text-slate-900" id="drilldown-title">Precipitation Rate Trend</h4>
+<span class="text-[11px] font-mono text-slate-400">Past 24 Hours Observation vs Blended Forecast</span>
+</div>
+</div>
+<button class="w-7 h-7 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors" onclick="closeDrilldownModal()">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<div class="mt-4">
+<div class="flex items-baseline justify-between">
+<div>
+<span class="text-2xl font-display font-bold text-slate-900" id="drilldown-current-val">48.2 mm/h</span>
+<span class="text-xs text-emerald-600 font-mono font-medium ml-2" id="drilldown-delta">+14.6% vs -3h</span>
+</div>
+<span class="text-xs font-mono px-2 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-100">Sensor: Paradip DWR</span>
+</div>
+<!-- Mini Sparkline SVG -->
+<div class="w-full h-24 bg-slate-50 rounded-xl border border-slate-200/70 p-2 mt-3 flex items-end">
+<svg class="w-full h-full overflow-visible" preserveaspectratio="none" viewbox="0 0 280 60">
+<defs>
+<lineargradient id="modal-spark-grad" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#0284c7" stop-opacity="0.3"></stop>
+<stop offset="100%" stop-color="#0284c7" stop-opacity="0.0"></stop>
+</lineargradient>
+</defs>
+<polygon fill="url(#modal-spark-grad)" points="0,55 30,50 60,42 90,38 120,45 150,22 180,12 210,18 240,28 280,34 280,60 0,60"></polygon>
+<polyline fill="none" points="0,55 30,50 60,42 90,38 120,45 150,22 180,12 210,18 240,28 280,34" stroke="#0284c7" stroke-linecap="round" stroke-width="2.5"></polyline>
+<circle class="animate-ping" cx="180" cy="12" fill="#0284c7" opacity="0.75" r="4"></circle>
+<circle cx="180" cy="12" fill="#0284c7" r="3"></circle>
+</svg>
+</div>
+<div class="flex items-center justify-between text-[11px] font-mono text-slate-400 mt-2 px-1">
+<span>-24h (0.8)</span>
+<span>-12h (14.2)</span>
+<span class="text-sky-600 font-bold">Peak (48.2)</span>
+<span>Now</span>
+</div>
+</div>
+<div class="mt-4 pt-3 border-t border-border-subtle flex items-center justify-end">
+<button class="px-3.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition-colors" onclick="closeDrilldownModal()">Dismiss</button>
+</div>
+</div>
+</div>
+<!-- Main Frame Layout: Sidebar + Canvas -->
+<div class="flex flex-1 min-h-screen">
+<!-- Refined Minimal Left Navigation Sidebar -->
+<aside class="w-64 border-r border-border-subtle bg-white flex flex-col justify-between shrink-0 select-none shadow-[1px_0_4px_rgba(0,0,0,0.02)]">
+<div class="flex flex-col">
+<!-- Brand Header -->
+<div class="h-16 flex items-center gap-3 px-5 border-b border-border-subtle">
+<div class="relative w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-600 to-sky-400 flex items-center justify-center text-white shadow-sm shadow-sky-500/20 overflow-hidden group">
+<!-- Subtle Rotating Radar Scan Sweep in Logo -->
+<svg class="absolute inset-0 w-full h-full radar-sweep-spin opacity-40 pointer-events-none" viewbox="0 0 36 36">
+<circle cx="18" cy="18" fill="none" r="14" stroke="currentColor" stroke-dasharray="2,2" stroke-width="1"></circle>
+<path d="M18 18 L18 2 A16 16 0 0 1 34 18 Z" fill="rgba(255,255,255,0.4)"></path>
+</svg>
+<span class="material-symbols-outlined text-[20px] relative z-10 transition-transform duration-300 group-hover:scale-110">air</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="font-display font-bold text-base tracking-tight text-slate-900">SANGAM</span>
+<span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-sky-50 text-sky-700 border border-sky-100">v4.2</span>
+</div>
+<span class="text-[11px] text-text-muted font-medium">MoES • NCMRWF India</span>
+</div>
+</div>
+<!-- Navigation Links -->
+<div class="p-3">
+<div class="px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold">Operational Modules</div>
+<nav class="flex flex-col gap-1 mt-1" id="sidebar-nav">
+<button class="sidebar-item active w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 bg-sky-50 text-sky-700 font-semibold border border-sky-100" data-nav="synoptic" onclick="switchSidebarTab(this, 'synoptic')">
+<span class="material-symbols-outlined text-[19px] text-sky-600 transition-transform duration-200">dashboard</span>
+<span class="truncate">Synoptic Deck</span>
+</button>
+<button class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900" data-nav="weighting" onclick="switchSidebarTab(this, 'weighting')">
+<span class="material-symbols-outlined text-[19px] text-slate-400 transition-transform duration-200">tune</span>
+<span class="truncate">Model Weighting</span>
+</button>
+<button class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900" data-nav="trajectory" onclick="switchSidebarTab(this, 'trajectory')">
+<span class="material-symbols-outlined text-[19px] text-slate-400 transition-transform duration-200">timeline</span>
+<span class="truncate">Lead-Time Trajectory</span>
+</button>
+<button class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900" data-nav="shap" onclick="switchSidebarTab(this, 'shap')">
+<span class="material-symbols-outlined text-[19px] text-slate-400 transition-transform duration-200">psychology</span>
+<span class="truncate">Explainable AI (SHAP)</span>
+</button>
+<button class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900" data-nav="alerts" onclick="switchSidebarTab(this, 'alerts')">
+<span class="material-symbols-outlined text-[19px] text-slate-400 transition-transform duration-200">warning</span>
+<span class="truncate">Early Warning &amp; CAP</span>
+</button>
+<button class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900" data-nav="verification" onclick="switchSidebarTab(this, 'verification')">
+<span class="material-symbols-outlined text-[19px] text-slate-400 transition-transform duration-200">verified</span>
+<span class="truncate">Verification &amp; Skill</span>
+</button>
+</nav>
+</div>
+</div>
+<!-- HPC Telemetry Widget -->
+<div class="p-3 border-t border-border-subtle bg-slate-50/60 m-2 rounded-xl border">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+</span>
+<span class="text-[11px] font-mono font-medium text-slate-700">Mihir / Pratyush HPC</span>
+</div>
+<span class="text-[10px] font-mono bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded">Synced</span>
+</div>
+<p class="text-[11px] text-slate-400 mt-1">Next 6-Hourly Batch Ingestion at 12:00 UTC</p>
+</div>
+</aside>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col overflow-y-auto">
+<!-- Clean Light Top Bar -->
+<header class="h-16 bg-white border-b border-border-subtle px-6 flex items-center justify-between sticky top-0 z-30 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+<!-- Region & Sector Selector Dropdown -->
+<div class="flex items-center gap-3">
+<div class="relative">
+<button class="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-border-medium/70 rounded-lg text-sm font-medium text-slate-800 hover:bg-slate-100 hover:border-sky-300 transition-all" id="region-dropdown-btn" onclick="toggleRegionDropdown()">
+<span class="material-symbols-outlined text-[18px] text-sky-600">location_on</span>
+<span id="selected-region-name">Odisha &amp; North Bay Coastal Sector</span>
+<span class="material-symbols-outlined text-[16px] text-slate-400">expand_more</span>
+</button>
+<!-- Region Menu -->
+<div class="hidden absolute left-0 top-full mt-1.5 w-72 bg-white rounded-xl shadow-lg border border-border-subtle py-1.5 z-50 transform origin-top-left transition-all" id="region-menu">
+<div class="px-3 py-1.5 text-[10px] font-mono text-slate-400 font-semibold uppercase">Operational Coastal Sectors</div>
+<button class="w-full text-left px-3 py-2 text-sm text-slate-800 hover:bg-sky-50 flex items-center justify-between group transition-colors" onclick="selectRegion('Odisha &amp; North Bay Coastal Sector', '20.27°N, 85.84°E', '#OD-BB-0412')">
+<span class="font-medium group-hover:text-sky-700">Odisha &amp; North Bay</span>
+<span class="text-[11px] font-mono text-slate-400">20.27°N, 85.84°E</span>
+</button>
+<button class="w-full text-left px-3 py-2 text-sm text-slate-800 hover:bg-sky-50 flex items-center justify-between group transition-colors" onclick="selectRegion('Konkan &amp; Mumbai Coastal Sector', '18.96°N, 72.82°E', '#MH-KB-0205')">
+<span class="font-medium group-hover:text-sky-700">Konkan &amp; Mumbai Sector</span>
+<span class="text-[11px] font-mono text-slate-400">18.96°N, 72.82°E</span>
+</button>
+<button class="w-full text-left px-3 py-2 text-sm text-slate-800 hover:bg-sky-50 flex items-center justify-between group transition-colors" onclick="selectRegion('Gujarat &amp; Saurashtra Sector', '22.30°N, 70.80°E', '#GJ-SR-0118')">
+<span class="font-medium group-hover:text-sky-700">Gujarat &amp; Saurashtra</span>
+<span class="text-[11px] font-mono text-slate-400">22.30°N, 70.80°E</span>
+</button>
+<button class="w-full text-left px-3 py-2 text-sm text-slate-800 hover:bg-sky-50 flex items-center justify-between group transition-colors" onclick="selectRegion('Tamil Nadu Coastal Belt', '13.08°N, 80.27°E', '#TN-CB-0904')">
+<span class="font-medium group-hover:text-sky-700">Tamil Nadu Coastal Belt</span>
+<span class="text-[11px] font-mono text-slate-400">13.08°N, 80.27°E</span>
+</button>
+</div>
+</div>
+<!-- Live Cycle Pill with Ping Pulse -->
+<div class="hidden md:flex items-center gap-2 text-xs font-mono text-slate-500 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
+</span>
+<span>Cycle: <strong class="text-slate-800">06:00 UTC</strong></span>
+</div>
+</div>
+<!-- Atmospheric Synoptic Regimes Pills -->
+<div class="flex items-center gap-3">
+<div class="hidden lg:flex items-center p-1 bg-slate-100 rounded-lg gap-1 border border-slate-200/80">
+<button class="regime-btn px-3 py-1 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 transition-all duration-200" id="regime-calm" onclick="setRegime('calm')">
+              Calm
+            </button>
+<button class="regime-btn active-regime px-3 py-1 rounded-md text-xs font-semibold bg-white text-sky-700 shadow-sm border border-slate-200/60 transition-all duration-200" id="regime-monsoon" onclick="setRegime('monsoon')">
+              Monsoon Squall
+            </button>
+<button class="regime-btn px-3 py-1 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 transition-all duration-200" id="regime-cyclone" onclick="setRegime('cyclone')">
+              Cyclone Gale
+            </button>
+<button class="regime-btn px-3 py-1 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 transition-all duration-200" id="regime-heatwave" onclick="setRegime('heatwave')">
+              Heatwave
+            </button>
+</div>
+<!-- Action Buttons in Top Bar -->
+<div class="flex items-center gap-2">
+<button class="btn-transition btn-ripple flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold shadow-sm shadow-sky-600/20 active:scale-95" id="btn-export-advisory" onclick="exportAdvisoryWithProgress()">
+<span class="material-symbols-outlined text-[16px]" id="export-btn-icon">file_download</span>
+<span id="export-btn-label">Export Advisory</span>
+</button>
+<button class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-all duration-200" onclick="triggerToast('Settings refreshed: Synoptic NetCDF pipeline calibrated.', 'info')" title="Settings">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Responsive Grid: 7 cols (Left) + 5 cols (Right) on Desktop -->
+<main class="flex-1 p-6 max-w-[1600px] w-full mx-auto">
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+<!-- ================= LEFT COLUMN (7 Cols) ================= -->
+<div class="xl:col-span-7 flex flex-col gap-6">
+<!-- 1. Hero Blended Forecast Card (Spacious, Crisp & Lightweight with Ambient Motion) -->
+<section class="bg-white rounded-2xl border border-border-subtle p-6 shadow-[0_2px_12px_-2px_rgba(15,23,42,0.04)] relative overflow-hidden card-transition" id="hero-card">
+<!-- Delicate animated meteorological particle advection stream in background -->
+<div class="absolute inset-0 pointer-events-none advection-bg opacity-70"></div>
+<div class="relative z-10">
+<div class="flex flex-wrap items-center justify-between gap-2 pb-4 border-b border-border-subtle/80">
+<div class="flex items-center gap-2.5">
+<!-- Radar icon with ambient radar ring sweep -->
+<div class="relative w-8 h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center font-bold">
+<span class="material-symbols-outlined text-[20px] transition-transform duration-300">radar</span>
+<span class="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
+</span>
+</div>
+<div>
+<h1 class="font-display font-bold text-slate-900 text-base leading-tight" id="hero-sector-title">
+                      Odisha &amp; North Bay Coastal Sector
+                    </h1>
+<div class="flex items-center gap-2 text-xs font-mono text-slate-400 mt-0.5">
+<span id="hero-grid-coords">20.27°N, 85.84°E</span>
+<span>•</span>
+<span id="hero-grid-id">Grid #OD-BB-0412</span>
+<span>•</span>
+<span class="text-sky-600 font-medium" id="hero-valid-time">Valid: 18:00 UTC (+12h)</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-amber-50 text-amber-700 border border-amber-200 flex items-center gap-1.5 shimmer-badge-warning transition-all" id="alert-pill-badge">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+<span id="alert-status-text">CRITICAL SQUALL</span>
+</span>
+</div>
+</div>
+<!-- Primary Value & Headline Metrics -->
+<div class="mt-5 grid grid-cols-1 sm:grid-cols-12 gap-6 items-center">
+<div class="sm:col-span-7">
+<div class="text-xs font-mono uppercase tracking-wider text-slate-400">SANGAM Blended Precipitation Rate</div>
+<div class="flex items-baseline gap-2 mt-1">
+<span class="font-display text-5xl font-bold text-slate-900 tracking-tight transition-all duration-300" id="hero-precip-value">48.2</span>
+<span class="text-xl font-display font-medium text-sky-600" id="hero-precip-unit">mm/h</span>
+<span class="ml-2 px-2 py-0.5 rounded text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-100 transition-all duration-300" id="intensity-tag">
+                      Very Heavy Rain
+                    </span>
+</div>
+<p class="text-xs text-slate-500 mt-2 leading-relaxed transition-all duration-300" id="hero-synoptic-desc">
+                    Severe low-level monsoonal convergence anchored offshore. Deep moisture influx with peak convective advection between 15:00 UTC and 21:00 UTC.
+                  </p>
+</div>
+<!-- AI Confidence Gauge Card with Floating Micro Animation -->
+<div class="sm:col-span-5 bg-slate-50/90 backdrop-blur-sm rounded-xl p-4 border border-border-subtle flex flex-col justify-between hover:border-emerald-300 transition-all">
+<div class="flex items-center justify-between text-xs font-medium text-slate-600">
+<span class="flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+  Ensemble Precision
+</span>
+<span class="font-mono text-emerald-600 font-semibold" id="ai-confidence-score">92.4% Confident</span>
+</div>
+<div class="w-full bg-slate-200 h-2 rounded-full mt-2.5 overflow-hidden">
+<div class="bg-emerald-500 h-full rounded-full transition-all duration-700 ease-out" id="ai-confidence-bar" style="width: 92.4%"></div>
+</div>
+<div class="flex items-center justify-between text-[11px] font-mono text-slate-400 mt-3 pt-2 border-t border-slate-200/60">
+<span>Spatial Res: <strong>0.12°</strong></span>
+<span>Cycle: <strong>6-Hourly</strong></span>
+</div>
+</div>
+</div>
+<!-- 4 Micro Met Metric Tiles with 3D Tilt Hover and Drilldown Sparklines -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+<div class="metric-tilt p-3 bg-slate-50/80 rounded-xl border border-slate-200/70 cursor-pointer select-none" onclick="openDrilldownModal('Precipitation Rate', '48.2 mm/h', '+14.6% vs -3h', 'water', 'text-sky-500', 'Paradip DWR &amp; AWS')">
+<div class="flex items-center justify-between text-slate-400 text-xs">
+<span class="font-mono">PRECIP RATE</span>
+<span class="material-symbols-outlined text-[16px] text-sky-500">water</span>
+</div>
+<div class="mt-1 flex items-baseline gap-1">
+<span class="font-display text-lg font-bold text-slate-800" id="tile-precip">48.2</span>
+<span class="text-xs font-mono text-slate-500" id="tile-precip-unit">mm/h</span>
+</div>
+<div class="flex items-center justify-between mt-0.5">
+<span class="text-[10px] text-slate-400">Peak convective band</span>
+<span class="text-[10px] text-sky-600 font-mono">Trend ↗</span>
+</div>
+</div>
+<div class="metric-tilt p-3 bg-slate-50/80 rounded-xl border border-slate-200/70 cursor-pointer select-none" onclick="openDrilldownModal('Wind Gust Speed', '64 km/h', '+8.2 km/h vs -1h', 'air', 'text-amber-500', 'Chandbali Coastal Anemometer')">
+<div class="flex items-center justify-between text-slate-400 text-xs">
+<span class="font-mono">GUST SPEED</span>
+<span class="material-symbols-outlined text-[16px] text-amber-500">air</span>
+</div>
+<div class="mt-1 flex items-baseline gap-1">
+<span class="font-display text-lg font-bold text-slate-800" id="tile-gust">64</span>
+<span class="text-xs font-mono text-slate-500">km/h</span>
+</div>
+<div class="flex items-center justify-between mt-0.5">
+<span class="text-[10px] text-slate-400">NNW onshore shear</span>
+<span class="text-[10px] text-amber-600 font-mono">Trend ↗</span>
+</div>
+</div>
+<div class="metric-tilt p-3 bg-slate-50/80 rounded-xl border border-slate-200/70 cursor-pointer select-none" onclick="openDrilldownModal('Surface Barometric Pressure', '994.2 hPa', '-3.8 hPa / 3hr', 'speed', 'text-emerald-500', 'Bhubaneswar Airport AWS')">
+<div class="flex items-center justify-between text-slate-400 text-xs">
+<span class="font-mono">PRESSURE</span>
+<span class="material-symbols-outlined text-[16px] text-emerald-500">speed</span>
+</div>
+<div class="mt-1 flex items-baseline gap-1">
+<span class="font-display text-lg font-bold text-slate-800" id="tile-press">994.2</span>
+<span class="text-xs font-mono text-slate-500">hPa</span>
+</div>
+<div class="flex items-center justify-between mt-0.5">
+<span class="text-[10px] text-slate-400">-3.8 hPa / 3hr fall</span>
+<span class="text-[10px] text-emerald-600 font-mono">Trend ↘</span>
+</div>
+</div>
+<div class="metric-tilt p-3 bg-slate-50/80 rounded-xl border border-slate-200/70 cursor-pointer select-none" onclick="openDrilldownModal('Relative Humidity &amp; Dewpoint', '94 %', '+4% vs morning', 'humidity_mid', 'text-indigo-500', 'Gopalpur Coastal Station')">
+<div class="flex items-center justify-between text-slate-400 text-xs">
+<span class="font-mono">REL HUMIDITY</span>
+<span class="material-symbols-outlined text-[16px] text-indigo-500">humidity_mid</span>
+</div>
+<div class="mt-1 flex items-baseline gap-1">
+<span class="font-display text-lg font-bold text-slate-800" id="tile-humidity">94</span>
+<span class="text-xs font-mono text-slate-500">%</span>
+</div>
+<div class="flex items-center justify-between mt-0.5">
+<span class="text-[10px] text-slate-400">Dew Pt: 27.2°C</span>
+<span class="text-[10px] text-indigo-600 font-mono">Trend ↗</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 2. Adaptive Multi-Source Weighting (Interactive Click-to-Inspect with Animated Bars) -->
+<section class="bg-white rounded-2xl border border-border-subtle p-6 shadow-[0_2px_12px_-2px_rgba(15,23,42,0.04)]">
+<div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+<div>
+<h2 class="font-display font-bold text-base text-slate-900">Adaptive Multi-Source Weighting</h2>
+<p class="text-xs text-slate-500">Dynamic per-grid blending by LightGBM meta-learner. Click any model to inspect diagnostics.</p>
+</div>
+<div class="flex items-center gap-1.5 text-xs font-mono bg-sky-50 text-sky-700 px-2.5 py-1 rounded-md border border-sky-100">
+<span class="material-symbols-outlined text-[14px]">auto_fix_high</span>
+<span>LightGBM v4.2 Meta-Learner</span>
+</div>
+</div>
+<!-- Interactive Source Rows -->
+<div class="flex flex-col gap-2.5" id="model-weight-container">
+<!-- 1. ECMWF IFS -->
+<div class="model-row model-interactive cursor-pointer p-3.5 rounded-xl border border-border-subtle hover:border-sky-300 hover:bg-sky-50/30 bg-white group" id="model-row-ecmwf" onclick="inspectModel('ECMWF IFS 0.1°', '38%', '42.0 mm/h', 'RMSE: 3.12 mm', 'Global High-Res NWP', '0.10° Lat-Lon grid', this)">
+<div class="flex items-center justify-between mb-1.5">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
+<span class="text-xs font-semibold text-slate-800 group-hover:text-sky-700">ECMWF Open Data (0.1° IFS)</span>
+<span class="text-[10px] font-mono text-slate-400">Global NWP</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-xs font-mono text-slate-500">Raw: <strong class="text-slate-700" id="raw-val-ecmwf">42.0 mm/h</strong></span>
+<span class="text-xs font-mono font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">38% Weight</span>
+</div>
+</div>
+<div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+<div class="bg-sky-500 h-full rounded-full transition-all duration-700 ease-out" style="width: 38%"></div>
+</div>
+<div class="flex items-center justify-between text-[11px] font-mono text-slate-400 mt-1.5">
+<span>Rank 1 Driver • Minimal bias in +12h advection</span>
+<span class="text-sky-600 group-hover:underline flex items-center gap-1">Click for Skill Diagnostics →</span>
+</div>
+</div>
+<!-- 2. IMD Radar AWS -->
+<div class="model-row model-interactive cursor-pointer p-3.5 rounded-xl border border-border-subtle hover:border-emerald-300 hover:bg-emerald-50/30 bg-white group" id="model-row-imd" onclick="inspectModel('IMD Doppler Radar &amp; AWS', '31%', '55.4 mm/h', 'Latency: 4.2 min', 'Mesoscale Ground Observation', 'Paradip DWR &amp; In-situ AWS', this)">
+<div class="flex items-center justify-between mb-1.5">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+<span class="text-xs font-semibold text-slate-800 group-hover:text-emerald-700">IMD Doppler Radar &amp; AWS</span>
+<span class="text-[10px] font-mono text-slate-400">Ground In-Situ</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-xs font-mono text-slate-500">Raw: <strong class="text-slate-700" id="raw-val-imd">55.4 mm/h</strong></span>
+<span class="text-xs font-mono font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">31% Weight</span>
+</div>
+</div>
+<div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+<div class="bg-emerald-500 h-full rounded-full transition-all duration-700 ease-out" style="width: 31%"></div>
+</div>
+<div class="flex items-center justify-between text-[11px] font-mono text-slate-400 mt-1.5">
+<span>Paradip DWR convective core tracking</span>
+<span class="text-emerald-600 group-hover:underline flex items-center gap-1">Click for Skill Diagnostics →</span>
+</div>
+</div>
+<!-- 3. GraphCast AI -->
+<div class="model-row model-interactive cursor-pointer p-3.5 rounded-xl border border-border-subtle hover:border-purple-300 hover:bg-purple-50/30 bg-white group" id="model-row-graphcast" onclick="inspectModel('GraphCast AI Reference', '19%', '39.1 mm/h', 'Z500 Corr: 0.94', 'GNN AI Reference Ingest', 'Precomputed NetCDF 0.25°', this)">
+<div class="flex items-center justify-between mb-1.5">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+<span class="text-xs font-semibold text-slate-800 group-hover:text-purple-700">GraphCast AI (Reference)</span>
+<span class="text-[10px] font-mono text-slate-400">DeepMind GNN</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-xs font-mono text-slate-500">Raw: <strong class="text-slate-700" id="raw-val-graphcast">39.1 mm/h</strong></span>
+<span class="text-xs font-mono font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">19% Weight</span>
+</div>
+</div>
+<div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+<div class="bg-purple-500 h-full rounded-full transition-all duration-700 ease-out" style="width: 19%"></div>
+</div>
+<div class="flex items-center justify-between text-[11px] font-mono text-slate-400 mt-1.5">
+<span>Trajectory vortex alignment &amp; Z500 field</span>
+<span class="text-purple-600 group-hover:underline flex items-center gap-1">Click for Skill Diagnostics →</span>
+</div>
+</div>
+<!-- 4. NOAA GFS FV3 -->
+<div class="model-row model-interactive cursor-pointer p-3.5 rounded-xl border border-border-subtle hover:border-slate-400 hover:bg-slate-50 bg-white group" id="model-row-gfs" onclick="inspectModel('NOAA GFS Global (FV3)', '12%', '32.2 mm/h', 'RMSE: 4.88 mm', 'Synoptic Driver', '0.25° Global Ingest', this)">
+<div class="flex items-center justify-between mb-1.5">
+<div class="flex items-center gap-2">
+<span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+<span class="text-xs font-semibold text-slate-800 group-hover:text-slate-900">NOAA GFS Global (FV3 Core)</span>
+<span class="text-[10px] font-mono text-slate-400">Synoptic Driver</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-xs font-mono text-slate-500">Raw: <strong class="text-slate-700" id="raw-val-gfs">32.2 mm/h</strong></span>
+<span class="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">12% Weight</span>
+</div>
+</div>
+<div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+<div class="bg-slate-400 h-full rounded-full transition-all duration-700 ease-out" style="width: 12%"></div>
+</div>
+<div class="flex items-center justify-between text-[11px] font-mono text-slate-400 mt-1.5">
+<span>Upper tropospheric easterly jet guidance</span>
+<span class="text-slate-500 group-hover:underline flex items-center gap-1">Click for Skill Diagnostics →</span>
+</div>
+</div>
+</div>
+<!-- Collapsible Diagnostic Drawer with Smooth Entrance -->
+<div class="hidden mt-4 p-4 rounded-xl bg-slate-50 border border-sky-200 text-xs transition-all duration-300" id="model-inspect-drawer">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2 font-semibold text-slate-900" id="inspect-title">ECMWF IFS 0.1°</div>
+<button class="text-slate-400 hover:text-slate-700 text-xs font-mono px-2 py-0.5 rounded hover:bg-slate-200 transition-colors" onclick="closeInspectDrawer()">✕ Close</button>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 pt-2 border-t border-slate-200 font-mono text-[11px]">
+<div><span class="text-slate-400 block">Weight</span><strong class="text-sky-600 text-sm" id="inspect-weight">38%</strong></div>
+<div><span class="text-slate-400 block">Raw Value</span><strong class="text-slate-700 text-sm" id="inspect-raw">42.0 mm/h</strong></div>
+<div><span class="text-slate-400 block">Error Metric</span><strong class="text-slate-700 text-sm" id="inspect-metric">RMSE 3.12 mm</strong></div>
+<div><span class="text-slate-400 block">Resolution</span><strong class="text-slate-700 text-sm" id="inspect-res">0.10° Lat-Lon</strong></div>
+</div>
+</div>
+</section>
+<!-- 3. Lead-Time Trajectory Chart & Dynamic Interactive Scrubber with Glow Curves -->
+<section class="bg-white rounded-2xl border border-border-subtle p-6 shadow-[0_2px_12px_-2px_rgba(15,23,42,0.04)]">
+<div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+<div>
+<h3 class="font-display font-bold text-base text-slate-900">Lead-Time Trajectory: Precip Intensity (mm/h)</h3>
+<p class="text-xs text-slate-500">Ensemble spread envelope (P10-P90) vs. SANGAM blended curve. Click hours below.</p>
+</div>
+<div class="flex items-center gap-3 text-xs font-mono">
+<div class="flex items-center gap-1.5"><span class="w-3 h-2 bg-sky-100 border border-sky-300 rounded-sm"></span><span class="text-slate-500">Spread (P10-90)</span></div>
+<div class="flex items-center gap-1.5"><span class="w-3 h-1 bg-sky-500 rounded"></span><span class="text-sky-700 font-semibold">SANGAM Blended</span></div>
+</div>
+</div>
+<!-- Interactive SVG Trajectory Canvas with Smooth Cursor Movement and Glowing Curve -->
+<div class="w-full h-56 bg-slate-50/70 rounded-xl border border-border-subtle p-3 relative overflow-hidden flex flex-col justify-end">
+<svg class="w-full h-full overflow-visible" id="trajectory-svg" preserveaspectratio="none" viewbox="0 0 650 180">
+<defs>
+<lineargradient id="sangam-spread-light" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#0284c7" stop-opacity="0.22"></stop>
+<stop offset="100%" stop-color="#0284c7" stop-opacity="0.02"></stop>
+</lineargradient>
+</defs>
+<!-- Horizontal Grid Lines -->
+<line stroke="#e2e8f0" stroke-dasharray="3,3" stroke-width="1" x1="0" x2="650" y1="35" y2="35"></line>
+<line stroke="#e2e8f0" stroke-dasharray="3,3" stroke-width="1" x1="0" x2="650" y1="75" y2="75"></line>
+<line stroke="#e2e8f0" stroke-dasharray="3,3" stroke-width="1" x1="0" x2="650" y1="115" y2="115"></line>
+<!-- IMD Warning Threshold line -->
+<line stroke="#f43f5e" stroke-dasharray="2,3" stroke-opacity="0.5" stroke-width="1" x1="0" x2="650" y1="55" y2="55"></line>
+<text fill="#e11d48" font-family="JetBrains Mono" font-size="9" font-weight="600" x="8" y="52">IMD Very Heavy Rain (45 mm/h)</text>
+<text fill="#94a3b8" font-family="JetBrains Mono" font-size="9" x="8" y="32">60 mm/h</text>
+<text fill="#94a3b8" font-family="JetBrains Mono" font-size="9" x="8" y="72">40 mm/h</text>
+<text fill="#94a3b8" font-family="JetBrains Mono" font-size="9" x="8" y="112">20 mm/h</text>
+<!-- Spread Polygon (P10-P90) -->
+<polygon fill="url(#sangam-spread-light)" points="30,140 110,95 200,40 290,65 380,95 470,118 560,132 630,145 630,165 560,158 470,148 380,130 290,105 200,80 110,130 30,155"></polygon>
+<!-- Raw Model Hairlines -->
+<path d="M 30 145 Q 110 105, 200 36 T 290 70 T 380 100 T 470 125 T 560 135 T 630 148" fill="none" opacity="0.6" stroke="#93c5fd" stroke-dasharray="2,2" stroke-width="1"></path>
+<path d="M 30 152 Q 110 120, 200 70 T 290 95 T 380 120 T 470 140 T 560 150 T 630 158" fill="none" opacity="0.6" stroke="#6ee7b7" stroke-dasharray="2,2" stroke-width="1"></path>
+<!-- SANGAM Blended Master Curve with CSS Glow -->
+<path class="curve-glow" d="M 30,148 C 65,138 100,118 145,92 C 175,72 200,56 200,56 C 235,72 265,82 290,82 C 340,82 355,110 380,112 C 430,115 450,130 470,130 C 520,130 580,140 630,148" fill="none" stroke="#0284c7" stroke-linecap="round" stroke-width="3.2"></path>
+<!-- Dynamic Vertical Lead Time Guide Line (transitions via JS) -->
+<line class="transition-all duration-300" id="scrubber-line" stroke="#0284c7" stroke-dasharray="3,3" stroke-width="1.5" x1="200" x2="200" y1="15" y2="165"></line>
+<!-- Dynamic Interactive Cursor Bubble with Gentle Pulse -->
+<g class="transition-all duration-300" id="scrubber-bubble" transform="translate(200, 56)">
+<circle class="animate-ping" fill="#0284c7" opacity="0.6" r="7"></circle>
+<circle fill="#0284c7" r="6"></circle>
+<circle fill="#ffffff" r="2.5"></circle>
+<rect fill="#0f172a" height="24" opacity="0.92" rx="4" width="112" x="12" y="-18"></rect>
+<text fill="#ffffff" font-family="JetBrains Mono" font-size="10" font-weight="600" id="scrubber-bubble-text" x="20" y="-2">48.2 mm/h (+12h)</text>
+</g>
+</svg>
+</div>
+<!-- Interactive Timeline Buttons (Working State Toggles with Scale Feedback) -->
+<div class="mt-4 flex items-center justify-between gap-1 overflow-x-auto pb-1">
+<button class="lead-btn px-2.5 py-1.5 rounded-lg text-xs font-mono font-medium text-slate-600 hover:bg-slate-100 hover:scale-105 active:scale-95 transition-all duration-200" onclick="setLeadTime(0, 30, '12.4', '06:00 UTC (+0h)', this)">
+<span class="block font-semibold">+0h</span>
+<span class="text-[10px] text-slate-400">06z Now</span>
+</button>
+<button class="lead-btn px-2.5 py-1.5 rounded-lg text-xs font-mono font-medium text-slate-600 hover:bg-slate-100 hover:scale-105 active:scale-95 transition-all duration-200" onclick="setLeadTime(6, 110, '26.8', '12:00 UTC (+6h)', this)">
+<span class="block font-semibold">+6h</span>
+<span class="text-[10px] text-slate-400">12z Influx</span>
+</button>
+<button class="lead-btn active px-2.5 py-1.5 rounded-lg text-xs font-mono font-semibold bg-sky-100 text-sky-800 border border-sky-300 shadow-sm scale-105 transition-all duration-200" onclick="setLeadTime(12, 200, '48.2', '18:00 UTC (+12h)', this)">
+<span class="block font-bold">+12h Peak</span>
+<span class="text-[10px] text-sky-600 font-medium">18z Max Squall</span>
+</button>
+<button class="lead-btn px-2.5 py-1.5 rounded-lg text-xs font-mono font-medium text-slate-600 hover:bg-slate-100 hover:scale-105 active:scale-95 transition-all duration-200" onclick="setLeadTime(18, 290, '38.0', '00:00 UTC (+18h)', this)">
+<span class="block font-semibold">+18h</span>
+<span class="text-[10px] text-slate-400">00z Night</span>
+</button>
+<button class="lead-btn px-2.5 py-1.5 rounded-lg text-xs font-mono font-medium text-slate-600 hover:bg-slate-100 hover:scale-105 active:scale-95 transition-all duration-200" onclick="setLeadTime(24, 380, '22.5', '06:00 UTC (+24h)', this)">
+<span class="block font-semibold">+24h</span>
+<span class="text-[10px] text-slate-400">06z Residual</span>
+</button>
+<button class="lead-btn px-2.5 py-1.5 rounded-lg text-xs font-mono font-medium text-slate-600 hover:bg-slate-100 hover:scale-105 active:scale-95 transition-all duration-200" onclick="setLeadTime(48, 470, '14.1', '06:00 UTC (+48h)', this)">
+<span class="block font-semibold">+48h</span>
+<span class="text-[10px] text-slate-400">06z Fair</span>
+</button>
+<button class="lead-btn px-2.5 py-1.5 rounded-lg text-xs font-mono font-medium text-slate-600 hover:bg-slate-100 hover:scale-105 active:scale-95 transition-all duration-200" onclick="setLeadTime(72, 630, '6.8', '06:00 UTC (+72h)', this)">
+<span class="block font-semibold">+72h</span>
+<span class="text-[10px] text-slate-400">06z Outflow</span>
+</button>
+</div>
+</section>
+</div>
+<!-- ================= RIGHT COLUMN (5 Cols) ================= -->
+<div class="xl:col-span-5 flex flex-col gap-6">
+<!-- Card A: Operational Early Warning & CAP Protocol with Ripple & Status Animations -->
+<section class="bg-white rounded-2xl border-2 border-amber-200/90 p-6 shadow-[0_2px_12px_-2px_rgba(245,158,11,0.08)] bg-gradient-to-b from-amber-50/40 to-white card-transition" id="cap-advisory-card">
+<div class="flex items-center justify-between pb-3 border-b border-amber-200/60" id="cap-header-border">
+<div class="flex items-center gap-2">
+<span class="relative flex h-2.5 w-2.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" id="cap-pulse-outer"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" id="cap-pulse-inner"></span>
+</span>
+<span class="font-mono text-xs uppercase font-bold text-amber-800 tracking-wider" id="cap-card-headline">CAP Early Warning Trigger</span>
+</div>
+<span class="text-[11px] font-mono bg-white px-2 py-0.5 rounded border border-amber-200 text-slate-600" id="bulletin-id-pill">Bulletin #MoES-2024-91</span>
+</div>
+<div class="mt-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-amber-600 text-[22px] transition-transform duration-300" id="cap-icon">warning</span>
+<h3 class="font-display font-bold text-base text-slate-900" id="cap-title-text">Coastal Inundation &amp; Monsoonal Squall Warning</h3>
+</div>
+<p class="text-xs text-slate-600 mt-2 leading-relaxed" id="cap-desc-text">
+                  Sustained onshore winds (55-65 km/h) coinciding with astronomical high tide at 20:15 IST. Elevated risk of sea-surge backwash in low-lying coastal blocks of Puri, Jagatsinghpur, and Kendrapara.
+                </p>
+</div>
+<!-- Recipient Badges -->
+<div class="mt-4 p-3 bg-white/90 rounded-xl border border-amber-200/80 text-xs">
+<div class="text-[10px] font-mono uppercase text-slate-400 font-semibold mb-1">Recipients (Automated Gateway):</div>
+<div class="font-medium text-slate-700">NDMA New Delhi • State EOC (Odisha &amp; WB) • District Collectors</div>
+</div>
+<!-- Interactive Buttons with Realistic Feedback & Animated Spinners -->
+<div class="mt-5 flex flex-col sm:flex-row gap-2.5">
+<button class="btn-transition btn-ripple flex-1 py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-medium text-xs shadow-sm shadow-amber-600/20 flex items-center justify-center gap-2 relative overflow-hidden" id="dispatch-early-warning-btn" onclick="dispatchEarlyWarning()">
+<span class="material-symbols-outlined text-[18px]" id="dispatch-icon">cell_tower</span>
+<span id="dispatch-label">Dispatch Early Warning</span>
+</button>
+<button class="btn-transition btn-ripple py-2.5 px-3.5 rounded-xl bg-white hover:bg-slate-50 active:scale-95 text-slate-700 font-mono text-xs border border-border-medium flex items-center justify-center gap-1.5 shadow-sm" id="export-grib-btn" onclick="exportDataBinary('NetCDF4/GRIB2')">
+<span class="material-symbols-outlined text-[16px] text-sky-600" id="grib-icon">download</span>
+<span id="grib-label">GRIB2 / NetCDF</span>
+</button>
+</div>
+</section>
+<!-- Card B: Explainable AI (SHAP Feature Attribution with Animated Tooltips) -->
+<section class="bg-white rounded-2xl border border-border-subtle p-6 shadow-[0_2px_12px_-2px_rgba(15,23,42,0.04)]">
+<div class="flex items-center justify-between pb-3 border-b border-border-subtle">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">psychology</span>
+</div>
+<div>
+<h3 class="font-display font-bold text-sm text-slate-900">Explainable AI (SHAP Attribution)</h3>
+<span class="text-[11px] text-slate-400">Tree-SHAP Kernel • Feature Contribution to +48.2 mm/h</span>
+</div>
+</div>
+<span class="text-[10px] font-mono bg-teal-50 text-teal-700 px-2 py-0.5 rounded border border-teal-200">v2.4 Model</span>
+</div>
+<p class="text-xs text-slate-500 mt-3">Click any atmospheric feature to view meteorological impact breakdown:</p>
+<!-- Clickable SHAP Feature Bars with Interactive Hover Tooltip & Slide Transitions -->
+<div class="flex flex-col gap-2 mt-3" id="shap-features">
+<div class="shap-bar-item cursor-pointer p-2.5 rounded-lg border border-border-subtle hover:border-sky-300 hover:bg-sky-50/20 hover:scale-[1.01] transition-all" onclick="showShapDetail('Coastal Topography &amp; Orographic Drag', '+34% (+11.6 mm/h)', 'Terrain friction forces onshore moisture convergence and rapid upward vertical motion along coastal dunes.')">
+<div class="flex justify-between text-xs mb-1">
+<span class="font-medium text-slate-700 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-sky-500">terrain</span>
+<span>Coastal Topography Drag</span>
+</span>
+<span class="font-mono font-bold text-sky-600" id="shap-val-1">+34% (+11.6 mm/h)</span>
+</div>
+<div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+<div class="bg-sky-500 h-full rounded-full transition-all duration-700 ease-out" style="width: 85%"></div>
+</div>
+</div>
+<div class="shap-bar-item cursor-pointer p-2.5 rounded-lg border border-border-subtle hover:border-emerald-300 hover:bg-emerald-50/20 hover:scale-[1.01] transition-all" onclick="showShapDetail('CAPE Instability (Convective Energy)', '+26% (+8.9 mm/h)', 'Thermodynamic instability exceeding 2400 J/kg fuels vertical cloud tower updrafts and severe lightning.')">
+<div class="flex justify-between text-xs mb-1">
+<span class="font-medium text-slate-700 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-emerald-500">bolt</span>
+<span>CAPE Convective Energy</span>
+</span>
+<span class="font-mono font-bold text-emerald-600" id="shap-val-2">+26% (+8.9 mm/h)</span>
+</div>
+<div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+<div class="bg-emerald-500 h-full rounded-full transition-all duration-700 ease-out" style="width: 65%"></div>
+</div>
+</div>
+<div class="shap-bar-item cursor-pointer p-2.5 rounded-lg border border-border-subtle hover:border-amber-300 hover:bg-amber-50/20 hover:scale-[1.01] transition-all" onclick="showShapDetail('Sea Surface Temperature Anomaly (+1.2°C)', '+21% (+7.1 mm/h)', 'Super-heated North Bay surface waters evaporate intense moisture plumes into the lower troposphere.')">
+<div class="flex justify-between text-xs mb-1">
+<span class="font-medium text-slate-700 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-amber-500">thermostat</span>
+<span>SST Anomaly (+1.2°C)</span>
+</span>
+<span class="font-mono font-bold text-amber-600" id="shap-val-3">+21% (+7.1 mm/h)</span>
+</div>
+<div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+<div class="bg-amber-500 h-full rounded-full transition-all duration-700 ease-out" style="width: 52%"></div>
+</div>
+</div>
+<div class="shap-bar-item cursor-pointer p-2.5 rounded-lg border border-border-subtle hover:border-indigo-300 hover:bg-indigo-50/20 hover:scale-[1.01] transition-all" onclick="showShapDetail('Monsoonal Climatology Prior', '+19% (+6.5 mm/h)', 'Historical 30-year Bay of Bengal squall priors calibrate model weights against extreme outliers.')">
+<div class="flex justify-between text-xs mb-1">
+<span class="font-medium text-slate-700 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[15px] text-indigo-500">history</span>
+<span>Monsoonal Climatology Prior</span>
+</span>
+<span class="font-mono font-bold text-indigo-600" id="shap-val-4">+19% (+6.5 mm/h)</span>
+</div>
+<div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+<div class="bg-indigo-500 h-full rounded-full transition-all duration-700 ease-out" style="width: 48%"></div>
+</div>
+</div>
+</div>
+<!-- Interactive Explanation Drawer with Smooth Slide Down -->
+<div class="hidden mt-3 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs transition-all duration-300" id="shap-detail-card">
+<div class="flex items-center justify-between font-semibold text-slate-800" id="shap-detail-title">Feature Title</div>
+<div class="text-sky-600 font-mono font-bold mt-0.5" id="shap-detail-val">+34%</div>
+<p class="text-slate-500 text-[11px] mt-1" id="shap-detail-desc">Description text</p>
+</div>
+<div class="mt-3 pt-2.5 border-t border-border-subtle flex items-center justify-between text-[11px] font-mono text-slate-400">
+<span id="shap-base-text">Base Model Intercept: 14.1 mm/h</span>
+<span class="text-sky-700 font-semibold" id="shap-total-text">Total Attribution: +34.1 mm/h</span>
+</div>
+</section>
+<!-- Card C: Gaussian Confidence & Uncertainty Bounds with Breathing Curve Animation -->
+<section class="bg-white rounded-2xl border border-border-subtle p-6 shadow-[0_2px_12px_-2px_rgba(15,23,42,0.04)]">
+<div class="flex items-center justify-between pb-3 border-b border-border-subtle">
+<div class="flex items-center gap-2">
+<div class="w-7 h-7 rounded-lg bg-sky-50 text-sky-700 flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">analytics</span>
+</div>
+<h3 class="font-display font-bold text-sm text-slate-900">Uncertainty Bounds &amp; Ingestion</h3>
+</div>
+<span class="text-[10px] font-mono bg-sky-50 text-sky-700 px-2 py-0.5 rounded border border-sky-100">Gaussian Fit</span>
+</div>
+<div class="grid grid-cols-2 gap-3 mt-4">
+<div class="p-3 bg-slate-50 rounded-xl border border-slate-200/70">
+<span class="text-[10px] font-mono text-slate-400 block uppercase">95% Confidence (2σ)</span>
+<span class="font-display text-base font-bold text-slate-800 mt-1 block" id="gauss-ci-bounds">41.0 – 53.4</span>
+<span class="text-[10px] text-slate-400" id="gauss-spread-unit">mm/h outcome spread</span>
+</div>
+<div class="p-3 bg-slate-50 rounded-xl border border-slate-200/70">
+<span class="text-[10px] font-mono text-slate-400 block uppercase">Ensemble Spread</span>
+<span class="font-display text-base font-bold text-emerald-600 mt-1 block" id="gauss-spread-status">Low (1.84σ)</span>
+<span class="text-[10px] text-slate-400">High inter-model agreement</span>
+</div>
+</div>
+<!-- Gaussian Bell Curve SVG with Undulating/Breathing Curve -->
+<div class="w-full h-20 bg-slate-50 rounded-xl border border-slate-200/70 mt-3 p-2 flex items-center justify-center overflow-hidden">
+<svg class="w-full h-full gaussian-breathe" preserveaspectratio="none" viewbox="0 0 300 70">
+<!-- 2-sigma Area -->
+<path d="M 60 60 Q 150 10, 240 60 Z" fill="#0284c7" fill-opacity="0.12"></path>
+<!-- 1-sigma Area -->
+<path d="M 105 60 Q 150 12, 195 60 Z" fill="#0d9488" fill-opacity="0.22"></path>
+<!-- Curve Stroke -->
+<path class="curve-glow" d="M 20 60 Q 100 60, 120 35 Q 150 12, 180 35 Q 200 60, 280 60" fill="none" stroke="#0284c7" stroke-width="2.2"></path>
+<!-- Glowing Mean Line -->
+<line stroke="#0d9488" stroke-dasharray="2,2" stroke-width="1.8" x1="150" x2="150" y1="12" y2="60"></line>
+<circle class="animate-pulse" cx="150" cy="12" fill="#0d9488" r="3.5"></circle>
+<text fill="#94a3b8" font-family="JetBrains Mono" font-size="8" id="gauss-label-left" x="65" y="67">-2σ (41.0)</text>
+<text fill="#0d9488" font-family="JetBrains Mono" font-size="8" font-weight="bold" id="gauss-label-mean" x="135" y="67">μ: 48.2</text>
+<text fill="#94a3b8" font-family="JetBrains Mono" font-size="8" id="gauss-label-right" x="215" y="67">+2σ (53.4)</text>
+</svg>
+</div>
+<div class="mt-3 flex items-center justify-between text-xs font-mono text-slate-500 pt-2 border-t border-slate-200/60">
+<span class="flex items-center gap-1.5">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+</span>
+  Ingest: 06:00 UTC
+</span>
+<span class="text-slate-400">Next Ingest: 12:00 UTC</span>
+</div>
+</section>
+</div>
+</div>
+<!-- Clean Compact Footer -->
+<footer class="mt-8 pt-4 pb-2 border-t border-border-subtle flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400 font-mono">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-sky-500"></span>
+<span>National Centre for Medium Range Weather Forecasting (NCMRWF) • Ministry of Earth Sciences</span>
+</div>
+<div class="flex items-center gap-4">
+<span>Problem ID: 26081</span>
+<span>LightGBM Meta-Loss v4.2</span>
+</div>
+</footer>
+</main>
+</div>
+</div>
+<!-- JavaScript Interactive Handlers & Animation Logic -->
+<script>
+    // 1. Toast Notification Helper with Fluid Slide & Fade
+    function triggerToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      let borderClass = 'border-slate-200 bg-white text-slate-800 shadow-sky-500/10';
+      let icon = 'info';
+      let iconColor = 'text-sky-600';
+
+      if (type === 'success') {
+        borderClass = 'border-emerald-200 bg-white text-slate-800 shadow-emerald-500/10';
+        icon = 'check_circle';
+        iconColor = 'text-emerald-600';
+      } else if (type === 'warning') {
+        borderClass = 'border-amber-200 bg-white text-slate-800 shadow-amber-500/10';
+        icon = 'warning';
+        iconColor = 'text-amber-600';
+      } else if (type === 'danger') {
+        borderClass = 'border-rose-200 bg-white text-slate-800 shadow-rose-500/10';
+        icon = 'report';
+        iconColor = 'text-rose-600';
+      }
+
+      toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-lg text-xs font-medium transition-all duration-300 transform translate-y-3 opacity-0 ${borderClass}`;
+      toast.innerHTML = `
+        <span class="material-symbols-outlined text-[18px] ${iconColor}">${icon}</span>
+        <span class="font-sans leading-tight">${message}</span>
+      `;
+
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-3', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-3');
+        setTimeout(() => toast.remove(), 300);
+      }, 3400);
+    }
+
+    // Number counting animation helper
+    function animateValue(elementId, start, end, duration, decimals = 1) {
+      const obj = document.getElementById(elementId);
+      if (!obj) return;
+      const startNum = parseFloat(start);
+      const endNum = parseFloat(end);
+      if (isNaN(startNum) || isNaN(endNum)) {
+        obj.textContent = end;
+        return;
+      }
+      const range = endNum - startNum;
+      const startTime = performance.now();
+
+      function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        const current = startNum + range * easeOut;
+        obj.textContent = current.toFixed(decimals);
+        if (progress < 1) {
+          requestAnimationFrame(update);
+        } else {
+          obj.textContent = endNum.toFixed(decimals);
+        }
+      }
+      requestAnimationFrame(update);
+    }
+
+    // 2. Region Dropdown Selector
+    function toggleRegionDropdown() {
+      const menu = document.getElementById('region-menu');
+      menu.classList.toggle('hidden');
+    }
+
+    window.addEventListener('click', (e) => {
+      const btn = document.getElementById('region-dropdown-btn');
+      const menu = document.getElementById('region-menu');
+      if (btn && menu && !btn.contains(e.target) && !menu.contains(e.target)) {
+        menu.classList.add('hidden');
+      }
+    });
+
+    function selectRegion(name, coords, gridId) {
+      document.getElementById('selected-region-name').textContent = name;
+      document.getElementById('hero-sector-title').textContent = name;
+      document.getElementById('hero-grid-coords').textContent = coords;
+      document.getElementById('hero-grid-id').textContent = gridId;
+      document.getElementById('region-menu').classList.add('hidden');
+      triggerToast(`Switched active domain to ${name} (${gridId})`, 'info');
+    }
+
+    // 3. Weather Synoptic Regime Switcher (Full Palette & Context Transition)
+    const regimeData = {
+      calm: {
+        precip: 1.2,
+        precipUnit: 'mm/h',
+        gust: 14,
+        press: 1014.2,
+        humidity: 58,
+        title: 'Calm Atmospheric Regime',
+        alert: 'NORMAL CONDITIONS',
+        alertClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        alertGlow: '',
+        desc: 'Gentle gradient sea breeze with clear sky advection. Offshore boundary layer stable with minimal convective trigger across shoreline.',
+        intensity: 'Fair / Light Sea Breeze',
+        intensityClass: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+        capHeadline: 'Routine Coastal Monitoring',
+        capTitle: 'No Active Severe Weather Threat',
+        capDesc: 'Calm sea conditions (0.4m wave height). Coastal maritime navigation normal. High pressure ridge dominance across eastern shelf.',
+        capCardBorder: 'border-emerald-200/90 from-emerald-50/40 to-white',
+        capIconColor: 'text-emerald-600',
+        capPulseOuter: 'bg-emerald-400',
+        capPulseInner: 'bg-emerald-500',
+        capButtonClass: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20',
+        bulletin: 'Bulletin #MoES-2024-CALM-01',
+        gaussCI: '0.8 – 2.4',
+        gaussMean: 'μ: 1.2',
+        gaussLeft: '-2σ (0.8)',
+        gaussRight: '+2σ (2.4)',
+        spreadStatus: 'Minimal (0.42σ)',
+        shap1: '+12% (+0.2 mm/h)',
+        shap2: '+8% (+0.1 mm/h)',
+        shap3: '+6% (+0.1 mm/h)',
+        shap4: '+4% (+0.1 mm/h)'
+      },
+      monsoon: {
+        precip: 48.2,
+        precipUnit: 'mm/h',
+        gust: 64,
+        press: 994.2,
+        humidity: 94,
+        title: 'Monsoon Squall',
+        alert: 'CRITICAL SQUALL',
+        alertClass: 'bg-amber-50 text-amber-700 border-amber-200',
+        alertGlow: 'shimmer-badge-warning',
+        desc: 'Severe low-level monsoonal convergence anchored offshore. Deep moisture influx with peak convective advection between 15:00 UTC and 21:00 UTC.',
+        intensity: 'Very Heavy Rain',
+        intensityClass: 'bg-rose-50 text-rose-700 border-rose-100',
+        capHeadline: 'CAP Early Warning Trigger',
+        capTitle: 'Coastal Inundation & Monsoonal Squall Warning',
+        capDesc: 'Sustained onshore winds (55-65 km/h) coinciding with astronomical high tide at 20:15 IST. Elevated risk of sea-surge backwash in low-lying coastal blocks.',
+        capCardBorder: 'border-amber-200/90 from-amber-50/40 to-white',
+        capIconColor: 'text-amber-600',
+        capPulseOuter: 'bg-amber-400',
+        capPulseInner: 'bg-amber-500',
+        capButtonClass: 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20',
+        bulletin: 'Bulletin #MoES-2024-91',
+        gaussCI: '41.0 – 53.4',
+        gaussMean: 'μ: 48.2',
+        gaussLeft: '-2σ (41.0)',
+        gaussRight: '+2σ (53.4)',
+        spreadStatus: 'Low (1.84σ)',
+        shap1: '+34% (+11.6 mm/h)',
+        shap2: '+26% (+8.9 mm/h)',
+        shap3: '+21% (+7.1 mm/h)',
+        shap4: '+19% (+6.5 mm/h)'
+      },
+      cyclone: {
+        precip: 88.5,
+        precipUnit: 'mm/h',
+        gust: 115,
+        press: 978.4,
+        humidity: 98,
+        title: 'Cyclone Gale (Cat 2 Storm)',
+        alert: 'RED CYCLONE DISASTER ALERT',
+        alertClass: 'bg-rose-100 text-rose-800 border-rose-300',
+        alertGlow: 'shimmer-badge-warning',
+        desc: 'Violent eyewall circulation making direct landfall. Intense spiral rainbands causing severe flooding, destructive squalls and 3.5m surge.',
+        intensity: 'Extremely Heavy Rain (Torrential)',
+        intensityClass: 'bg-rose-600 text-white border-rose-600',
+        capHeadline: 'EMERGENCY RED CAP TRIGGER',
+        capTitle: 'Cyclone Gale & Coastal Evacuation Order',
+        capDesc: 'Immediate evacuation alert for blocks within 5km of shoreline. Destructive winds gusting to 125 km/h with total port suspension along Paradip and Dhamra.',
+        capCardBorder: 'border-rose-400 from-rose-50/60 to-white',
+        capIconColor: 'text-rose-600',
+        capPulseOuter: 'bg-rose-500',
+        capPulseInner: 'bg-rose-600',
+        capButtonClass: 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20',
+        bulletin: 'Bulletin #MoES-2024-CYC-09',
+        gaussCI: '76.2 – 98.1',
+        gaussMean: 'μ: 88.5',
+        gaussLeft: '-2σ (76.2)',
+        gaussRight: '+2σ (98.1)',
+        spreadStatus: 'Moderate (3.10σ)',
+        shap1: '+42% (+28.4 mm/h)',
+        shap2: '+31% (+21.0 mm/h)',
+        shap3: '+18% (+12.2 mm/h)',
+        shap4: '+9% (+6.1 mm/h)'
+      },
+      heatwave: {
+        precip: 0.0,
+        precipUnit: 'mm/h',
+        gust: 22,
+        press: 1004.8,
+        humidity: 24,
+        title: 'Severe Heatwave Inversion',
+        alert: 'SEVERE HEATWAVE ADVISORY',
+        alertClass: 'bg-orange-100 text-orange-800 border-orange-300',
+        alertGlow: '',
+        desc: 'Subsidence inversion driving maximum surface temperatures above 43.8°C with desiccating northwestern winds and elevated wet-bulb risk.',
+        intensity: 'Dry Convective Heat / 43.8°C',
+        intensityClass: 'bg-orange-50 text-orange-700 border-orange-200',
+        capHeadline: 'IMD HEATWAVE ORANGE TRIGGER',
+        capTitle: 'Severe Inland Thermal Advection Alert',
+        capDesc: 'Elevated mortality risk for outdoor workers between 11:30 and 16:00 IST. Emergency drinking water points activated by municipal authorities.',
+        capCardBorder: 'border-orange-300 from-orange-50/50 to-white',
+        capIconColor: 'text-orange-600',
+        capPulseOuter: 'bg-orange-400',
+        capPulseInner: 'bg-orange-500',
+        capButtonClass: 'bg-orange-600 hover:bg-orange-700 shadow-orange-600/20',
+        bulletin: 'Bulletin #MoES-2024-HEAT-03',
+        gaussCI: '0.0 – 0.4',
+        gaussMean: 'μ: 0.0',
+        gaussLeft: '-2σ (0.0)',
+        gaussRight: '+2σ (0.4)',
+        spreadStatus: 'Stable (0.12σ)',
+        shap1: '+55% (Subsidence)',
+        shap2: '+25% (NW Advection)',
+        shap3: '+15% (Clear Sky Radiation)',
+        shap4: '+5% (Soil Moisture Deficit)'
+      }
+    };
+
+    function setRegime(regimeKey) {
+      // Toggle button states
+      document.querySelectorAll('.regime-btn').forEach(btn => {
+        btn.classList.remove('bg-white', 'text-sky-700', 'shadow-sm', 'border', 'border-slate-200/60', 'font-semibold');
+        btn.classList.add('text-slate-600', 'font-medium');
+      });
+
+      const activeBtn = document.getElementById(`regime-${regimeKey}`);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-white', 'text-sky-700', 'shadow-sm', 'border', 'border-slate-200/60', 'font-semibold');
+        activeBtn.classList.remove('text-slate-600', 'font-medium');
+      }
+
+      const data = regimeData[regimeKey];
+      if (!data) return;
+
+      // Animate numerical metrics smoothly
+      const currentHeroVal = parseFloat(document.getElementById('hero-precip-value').textContent) || 0;
+      animateValue('hero-precip-value', currentHeroVal, data.precip, 400);
+      animateValue('tile-precip', currentHeroVal, data.precip, 400);
+      
+      const currentGust = parseFloat(document.getElementById('tile-gust').textContent) || 0;
+      animateValue('tile-gust', currentGust, data.gust, 350, 0);
+
+      const currentPress = parseFloat(document.getElementById('tile-press').textContent) || 0;
+      animateValue('tile-press', currentPress, data.press, 450, 1);
+
+      const currentHumid = parseFloat(document.getElementById('tile-humidity').textContent) || 0;
+      animateValue('tile-humidity', currentHumid, data.humidity, 350, 0);
+
+      // Text and badges
+      document.getElementById('hero-synoptic-desc').textContent = data.desc;
+      
+      const intensityTag = document.getElementById('intensity-tag');
+      intensityTag.textContent = data.intensity;
+      intensityTag.className = `ml-2 px-2 py-0.5 rounded text-xs font-semibold transition-all duration-300 ${data.intensityClass}`;
+
+      const alertBadge = document.getElementById('alert-pill-badge');
+      document.getElementById('alert-status-text').textContent = data.alert;
+      alertBadge.className = `px-2.5 py-1 rounded-full text-xs font-mono font-semibold flex items-center gap-1.5 transition-all duration-300 ${data.alertClass} ${data.alertGlow}`;
+
+      // Update CAP Early Warning Card Styling & Text
+      const capCard = document.getElementById('cap-advisory-card');
+      capCard.className = `rounded-2xl border-2 p-6 shadow-[0_2px_12px_-2px_rgba(245,158,11,0.08)] bg-gradient-to-b card-transition ${data.capCardBorder}`;
+      
+      document.getElementById('cap-card-headline').textContent = data.capHeadline;
+      document.getElementById('cap-title-text').textContent = data.capTitle;
+      document.getElementById('cap-desc-text').textContent = data.capDesc;
+      document.getElementById('bulletin-id-pill').textContent = data.bulletin;
+
+      const capIcon = document.getElementById('cap-icon');
+      capIcon.className = `material-symbols-outlined text-[22px] transition-transform duration-300 ${data.capIconColor}`;
+
+      const dispatchBtn = document.getElementById('dispatch-early-warning-btn');
+      dispatchBtn.className = `btn-transition btn-ripple flex-1 py-2.5 px-4 rounded-xl text-white font-medium text-xs shadow-sm flex items-center justify-center gap-2 relative overflow-hidden active:scale-95 ${data.capButtonClass}`;
+
+      // Update Gaussian Uncertainty Values
+      document.getElementById('gauss-ci-bounds').textContent = data.gaussCI;
+      document.getElementById('gauss-label-mean').textContent = data.gaussMean;
+      document.getElementById('gauss-label-left').textContent = data.gaussLeft;
+      document.getElementById('gauss-label-right').textContent = data.gaussRight;
+      document.getElementById('gauss-spread-status').textContent = data.spreadStatus;
+
+      // Update SHAP strings
+      document.getElementById('shap-val-1').textContent = data.shap1;
+      document.getElementById('shap-val-2').textContent = data.shap2;
+      document.getElementById('shap-val-3').textContent = data.shap3;
+      document.getElementById('shap-val-4').textContent = data.shap4;
+
+      triggerToast(`Atmospheric regime switched to: ${data.title}`, 'info');
+    }
+
+    // 4. Trajectory Timeline Interactive Lead-Time Scrubber with Smooth Animation
+    function setLeadTime(hours, xCoord, precipRate, validText, btnElement) {
+      document.querySelectorAll('.lead-btn').forEach(btn => {
+        btn.classList.remove('active', 'bg-sky-100', 'text-sky-800', 'border', 'border-sky-300', 'shadow-sm', 'font-bold', 'scale-105');
+        btn.classList.add('text-slate-600', 'font-medium');
+      });
+      btnElement.classList.add('active', 'bg-sky-100', 'text-sky-800', 'border', 'border-sky-300', 'shadow-sm', 'font-bold', 'scale-105');
+      btnElement.classList.remove('text-slate-600', 'font-medium');
+
+      const line = document.getElementById('scrubber-line');
+      const bubble = document.getElementById('scrubber-bubble');
+      const bubbleText = document.getElementById('scrubber-bubble-text');
+
+      line.setAttribute('x1', xCoord);
+      line.setAttribute('x2', xCoord);
+
+      let yCoord = 56;
+      if (hours === 0) yCoord = 148;
+      else if (hours === 6) yCoord = 92;
+      else if (hours === 12) yCoord = 56;
+      else if (hours === 18) yCoord = 82;
+      else if (hours === 24) yCoord = 112;
+      else if (hours === 48) yCoord = 130;
+      else if (hours === 72) yCoord = 148;
+
+      bubble.setAttribute('transform', `translate(${xCoord}, ${yCoord})`);
+      bubbleText.textContent = `${precipRate} mm/h (+${hours}h)`;
+
+      document.getElementById('hero-valid-time').textContent = `Valid: ${validText}`;
+      
+      const currentHero = parseFloat(document.getElementById('hero-precip-value').textContent) || 0;
+      animateValue('hero-precip-value', currentHero, precipRate, 300);
+      animateValue('tile-precip', currentHero, precipRate, 300);
+
+      triggerToast(`Lead Horizon adjusted to +${hours}h (${validText})`, 'info');
+    }
+
+    // 5. Model Weighting Interactive Inspector Drawer with Highlight Ring
+    function inspectModel(name, weight, rawVal, metric, type, res, rowElement) {
+      // Highlight active row
+      document.querySelectorAll('.model-row').forEach(row => {
+        row.classList.remove('ring-2', 'ring-sky-500', 'bg-sky-50/20');
+      });
+      if (rowElement) {
+        rowElement.classList.add('ring-2', 'ring-sky-500', 'bg-sky-50/20');
+      }
+
+      const drawer = document.getElementById('model-inspect-drawer');
+      drawer.classList.remove('hidden');
+
+      document.getElementById('inspect-title').textContent = `${name} • Operational Skill Diagnostics`;
+      document.getElementById('inspect-weight').textContent = weight;
+      document.getElementById('inspect-raw').textContent = rawVal;
+      document.getElementById('inspect-metric').textContent = metric;
+      document.getElementById('inspect-res').textContent = res;
+
+      triggerToast(`Loaded verification metrics for ${name}`, 'info');
+    }
+
+    function closeInspectDrawer() {
+      document.getElementById('model-inspect-drawer').classList.add('hidden');
+      document.querySelectorAll('.model-row').forEach(row => {
+        row.classList.remove('ring-2', 'ring-sky-500', 'bg-sky-50/20');
+      });
+    }
+
+    // 6. SHAP Feature Attribution Detail Tooltip
+    function showShapDetail(title, contribution, description) {
+      const card = document.getElementById('shap-detail-card');
+      card.classList.remove('hidden');
+
+      document.getElementById('shap-detail-title').textContent = title;
+      document.getElementById('shap-detail-val').textContent = `Attribution: ${contribution}`;
+      document.getElementById('shap-detail-desc').textContent = description;
+      
+      triggerToast(`Inspecting SHAP feature: ${title}`, 'info');
+    }
+
+    // 7. Interactive Drilldown Modal Popover for Metric Tiles
+    function openDrilldownModal(title, currentVal, delta, icon, iconColorClass, station) {
+      const modal = document.getElementById('tile-drilldown-modal');
+      const box = document.getElementById('drilldown-modal-box');
+      
+      document.getElementById('drilldown-title').textContent = title;
+      document.getElementById('drilldown-current-val').textContent = currentVal;
+      document.getElementById('drilldown-delta').textContent = delta;
+      
+      const iconEl = document.getElementById('drilldown-icon');
+      iconEl.innerHTML = `<span class="material-symbols-outlined text-[19px] ${iconColorClass}">${icon}</span>`;
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      
+      requestAnimationFrame(() => {
+        box.classList.remove('scale-95');
+        box.classList.add('scale-100');
+      });
+    }
+
+    function closeDrilldownModal() {
+      const modal = document.getElementById('tile-drilldown-modal');
+      const box = document.getElementById('drilldown-modal-box');
+      box.classList.remove('scale-100');
+      box.classList.add('scale-95');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }, 150);
+    }
+
+    // 8. Animated Action Button Triggers (Spinner & Dispatched Feedback)
+    function dispatchEarlyWarning() {
+      const btn = document.getElementById('dispatch-early-warning-btn');
+      const icon = document.getElementById('dispatch-icon');
+      const label = document.getElementById('dispatch-label');
+
+      // Enter loading state
+      btn.disabled = true;
+      icon.innerHTML = `<svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>`;
+      label.textContent = "Broadcasting CAP Gateway...";
+
+      setTimeout(() => {
+        icon.textContent = "check_circle";
+        label.textContent = "Dispatched to NDMA";
+        btn.classList.remove('bg-amber-600', 'hover:bg-amber-700');
+        btn.classList.add('bg-emerald-600');
+
+        triggerToast('Bulletin #MoES-2024-91 successfully dispatched to NDMA & SDMA gateways.', 'success');
+
+        // Reset after 3 seconds
+        setTimeout(() => {
+          btn.disabled = false;
+          icon.textContent = "cell_tower";
+          label.textContent = "Dispatch Early Warning";
+          btn.classList.remove('bg-emerald-600');
+          btn.classList.add('bg-amber-600', 'hover:bg-amber-700');
+        }, 3200);
+      }, 1100);
+    }
+
+    function exportAdvisoryWithProgress() {
+      const btn = document.getElementById('btn-export-advisory');
+      const icon = document.getElementById('export-btn-icon');
+      const label = document.getElementById('export-btn-label');
+
+      btn.disabled = true;
+      icon.innerHTML = `<svg class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>`;
+      label.textContent = "Compiling...";
+
+      setTimeout(() => {
+        icon.textContent = "file_download_done";
+        label.textContent = "Ready";
+        triggerToast('Official Multi-Agency PDF Advisory compiled and downloaded.', 'success');
+        
+        setTimeout(() => {
+          btn.disabled = false;
+          icon.textContent = "file_download";
+          label.textContent = "Export Advisory";
+        }, 2000);
+      }, 900);
+    }
+
+    function exportDataBinary(format) {
+      const icon = document.getElementById('grib-icon');
+      const label = document.getElementById('grib-label');
+      label.textContent = "Packaging...";
+      
+      setTimeout(() => {
+        label.textContent = "GRIB2 / NetCDF";
+        triggerToast(`Digitally signed ${format} payload downloaded (Grid #OD-BB-0412).`, 'success');
+      }, 800);
+    }
+
+    // 9. Sidebar Tab Switcher
+    function switchSidebarTab(btn, tabId) {
+      document.querySelectorAll('.sidebar-item').forEach(el => {
+        el.classList.remove('active', 'bg-sky-50', 'text-sky-700', 'font-semibold', 'border', 'border-sky-100');
+        el.classList.add('text-slate-600');
+        const icon = el.querySelector('.material-symbols-outlined');
+        if (icon) {
+          icon.classList.remove('text-sky-600');
+          icon.classList.add('text-slate-400');
+        }
+      });
+
+      btn.classList.add('active', 'bg-sky-50', 'text-sky-700', 'font-semibold', 'border', 'border-sky-100');
+      btn.classList.remove('text-slate-600');
+      const icon = btn.querySelector('.material-symbols-outlined');
+      if (icon) {
+        icon.classList.add('text-sky-600');
+        icon.classList.remove('text-slate-400');
+      }
+
+      triggerToast(`Navigated to ${btn.querySelector('span:last-child').textContent}`, 'info');
+    }
+  </script>
+</body></html>
